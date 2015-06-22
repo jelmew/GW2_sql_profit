@@ -17,7 +17,15 @@ def create_tables():
     conn.commit()
     conn.close()
 
-
+def return_list_of_transaction_items():
+    conn=sqlite3.connect(db_name)
+    c=conn.cursor()
+    c.execute('SELECT distinct gw2_id FROM (select gw2_id from tp_sold union all select gw2_id from tp_selling union all select gw2_id from tp_buying union all select gw2_id from tp_bought);')
+    id_list= c.fetchall()
+    conn.commit()
+    conn.close()
+    
+    return id_list
 def insert_tp_items(sold_items_query,tp_database):
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
@@ -60,13 +68,13 @@ def insert_id_names():
     
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
-    c.execute('SELECT distinct gw2_id FROM (select gw2_id from tp_sold union all select gw2_id from tp_selling union all select gw2_id from tp_buying union all select gw2_id from tp_bought);')
-    id_list= c.fetchall()
+    id_list=return_list_of_transaction_items()
     for gw2_id_tup in id_list:
         gw2_id=gw2_id_tup[0]
         gw2_input_tup=(gw2_id,get_name_from_id(gw2_id))
         print gw2_input_tup
         c.execute('INSERT OR IGNORE INTO items VALUES(?, ?);',gw2_input_tup)
+        conn.commit()
         #c.execute('insert')
         #c.execute('if NOT exists (select gw2_id from items where gw2_id =  ?) INSERT into items values (?)',gw2_insert_tup)
         
