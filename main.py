@@ -16,6 +16,7 @@ if __name__ == '__main__':
     update_tp_selling()
     update_tp_buying()
     update_tp_bought()
+    insert_id_names()
     #print get_bought_items()
     #name =get_name_from_id(28445)
     #print name

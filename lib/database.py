@@ -8,7 +8,7 @@ def set_db_name(input_db_name):
 def create_tables():
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
-    c.execute('CREATE TABLE items (gw2_id INT, gw2_name Varchar, quantity INT)')
+    c.execute('CREATE TABLE items (gw2_id INT PRIMARY KEY, gw2_name Varchar)')
     c.execute('CREATE TABLE tp_sold (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
     c.execute('CREATE TABLE tp_selling (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
     c.execute('CREATE TABLE tp_bought (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
@@ -55,3 +55,20 @@ def update_tp_buying():
     t=get_jsonpared_data_auth("https://api.guildwars2.com/v2/commerce/transactions/current/buys")
     insert_tp_items(t,'tp_buying')
     
+def insert_id_names():
+
+    
+    conn=sqlite3.connect(db_name)
+    c=conn.cursor()
+    c.execute('SELECT distinct gw2_id FROM (select gw2_id from tp_sold union all select gw2_id from tp_selling union all select gw2_id from tp_buying union all select gw2_id from tp_bought);')
+    id_list= c.fetchall()
+    for gw2_id_tup in id_list:
+        gw2_id=gw2_id_tup[0]
+        gw2_input_tup=(gw2_id,get_name_from_id(gw2_id))
+        print gw2_input_tup
+        c.execute('INSERT OR IGNORE INTO items VALUES(?, ?);',gw2_input_tup)
+        #c.execute('insert')
+        #c.execute('if NOT exists (select gw2_id from items where gw2_id =  ?) INSERT into items values (?)',gw2_insert_tup)
+        
+    conn.commit()
+    conn.close()
