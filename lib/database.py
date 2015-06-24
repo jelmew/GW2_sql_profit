@@ -64,15 +64,13 @@ def update_tp_buying():
     insert_tp_items(t,'tp_buying')
     
 def insert_id_names():
-
-    
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
     id_list=return_list_of_transaction_items()
     for gw2_id_tup in id_list:
         gw2_id=gw2_id_tup[0]
         gw2_input_tup=(gw2_id,get_name_from_id(gw2_id))
-        print gw2_input_tup
+        #print gw2_input_tup
         c.execute('INSERT OR IGNORE INTO items VALUES(?, ?);',gw2_input_tup)
         conn.commit()
         #c.execute('insert')
@@ -80,3 +78,31 @@ def insert_id_names():
         
     conn.commit()
     conn.close()
+    
+def get_list_of_unsold_items():
+    conn=sqlite3.connect(db_name)
+    c=conn.cursor()
+    #c.execute('SELECT gw2_id, price, quantity FROM tp_bought')
+    #list_of_gw2_id=c.fetchall()
+    #print list_of_gw2_id
+    c.execute('SELECT b.gw2_id, b.price, sum(b.quantity) FROM tp_bought b INNER JOIN tp_bought b2 on b.gw2_id=b2.gw2_id and b.price=b2.price GROUP BY b.gw2_id')
+    list_of_gw2_id_bought=list(c.fetchall())
+    list_of_gw2_id_bought=[list(elem) for elem in list_of_gw2_id_bought]
+    c.execute('SELECT b.gw2_id, b.price, sum(b.quantity) FROM tp_sold b INNER JOIN tp_sold b2 on b.gw2_id=b2.gw2_id and b.price=b2.price GROUP BY b.gw2_id')
+    list_of_gw2_id_sold=list(c.fetchall())
+    list_of_gw2_id_sold=[list(elem) for elem in list_of_gw2_id_sold]
+    c.execute('SELECT b.gw2_id, b.price, sum(b.quantity) FROM tp_selling b INNER JOIN tp_selling b2 on b.gw2_id=b2.gw2_id and b.price=b2.price GROUP BY b.gw2_id')
+    list_of_gw2_id_selling=list(c.fetchall())
+    list_of_gw2_id_selling=[list(elem) for elem in list_of_gw2_id_selling]
+    #gw2_id_only_sold_list=[x[0] for x in list_of_gw2_id_sold[0]]
+    print list_of_gw2_id_selling
+    sold_item_match=[]
+    for index, bought in enumerate(list_of_gw2_id_bought):
+        print bought
+        if bought[0] in [x[0] for x in list_of_gw2_id_sold]:
+            sold_item_match=[x for x in  list_of_gw2_id_sold if x[0]==bought[0]]
+            for sold_item in sold_item_match:
+                bought[2]=bought[2]-sold_item[2]
+        print bought
+        
+    
