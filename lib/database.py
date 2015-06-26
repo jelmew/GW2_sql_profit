@@ -9,10 +9,11 @@ def create_tables():
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
     c.execute('CREATE TABLE items (gw2_id INT PRIMARY KEY, gw2_name Varchar)')
-    c.execute('CREATE TABLE tp_sold (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
-    c.execute('CREATE TABLE tp_selling (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
-    c.execute('CREATE TABLE tp_bought (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
-    c.execute('CREATE TABLE tp_buying (id INT, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
+    c.execute('CREATE TABLE tp_sold (id INT PRIMARY KEY, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
+    c.execute('CREATE TABLE tp_selling (id INT PRIMARY KEY, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
+    c.execute('CREATE TABLE tp_bought (id INT PRIMARY KEY, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
+    c.execute('CREATE TABLE tp_buying (id INT PRIMARY KEY, gw2_id INT, price FLOAT, quantity INT, date_listed DATETIME )')
+    c.execute('CREATE TABLE tp_prices (gw2_id INT PRIMARY KEY, price FLOAT);')
    # c.execute('CREATE TABLE tp_listing (gw2_id INT,sell FLOAT, selldate DATE)')
     conn.commit()
     conn.close()
@@ -20,13 +21,24 @@ def create_tables():
 def return_list_of_transaction_items():
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
+    #c.execute('SELECT distinct gw2_id')
     c.execute('SELECT distinct gw2_id FROM (select gw2_id from tp_sold union all select gw2_id from tp_selling union all select gw2_id from tp_buying union all select gw2_id from tp_bought);')
     id_list= c.fetchall()
+    #print id_list
     conn.commit()
     conn.close()
-    
     return id_list
+
 def insert_tp_items(sold_items_query,tp_database):
+    conn=sqlite3.connect(db_name)
+    c=conn.cursor()
+    for item in sold_items_query:
+        t=(item['id'],item['item_id'],item['price'],item['quantity'],item['created'])
+        c.execute('INSERT OR IGNORE INTO {} (id, gw2_id,price,quantity,date_listed) VALUES(?,?,?,?,?)'.format(tp_database),t)
+    conn.commit()
+    conn.close()
+
+def insert_tp_items_old(sold_items_query,tp_database):
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
     c.execute('SELECT id, gw2_id from {} ORDER BY id DESC'.format(tp_database))
@@ -36,9 +48,6 @@ def insert_tp_items(sold_items_query,tp_database):
     if first_entry!=None:
         limit=int(first_entry[0])
         gw2_id=int(first_entry[1])
-    #if limit !=0: print get_name_from_id(gw2_id)
-    #print limit
-    #print sold_items_query
     for item in sold_items_query:
         if item['id']<= limit: continue
         t=(item['id'],item['item_id'],item['price'],item['quantity'],item['created'])
@@ -71,6 +80,7 @@ def insert_id_names():
         gw2_id=gw2_id_tup[0]
         gw2_input_tup=(gw2_id,get_name_from_id(gw2_id))
         #print gw2_input_tup
+        #print gw2_input_tup
         c.execute('INSERT OR IGNORE INTO items VALUES(?, ?);',gw2_input_tup)
         conn.commit()
         #c.execute('insert')
@@ -78,7 +88,20 @@ def insert_id_names():
         
     conn.commit()
     conn.close()
-    
+
+def update_current_price():
+    conn=sqlite3.connect(db_name)
+    c=conn.cursor()
+    c.execute('SELECT DISTINCT gw2_id FROM tp_bought')
+    list_of_all_items=c.fetchall()
+    for item in list_of_all_items:
+        gw2_id=item[0]
+        t=get_price_item(gw2_id)
+        insert_tuple=(gw2_id,gw2_id,t['sells']['unit_price'])
+        c.execute('INSERT OR REPLACE INTO tp_prices (gw2_id,price) VALUES (COALESCE((SELECT gw2_id FROM tp_prices WHERE gw2_id=?),?) ,?);',insert_tuple)
+    conn.commit()
+    conn.close()
+
 def get_list_of_unsold_items():
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
@@ -105,4 +128,18 @@ def get_list_of_unsold_items():
                 bought[2]=bought[2]-sold_item[2]
         print bought
         
-    
+ 
+ 
+def sellable_for_profit():
+    conn=sqlite3.connect(db_name)
+    c=conn.cursor()
+    #c.execute('SELECT  i.gw2_name,b.gw2_id, SUM(b.quantity) AS sum_quantity, b.price, p.price FROM tp_bought b INNER JOIN items i ON b.gw2_id=i.gw2_id INNER JOIN tp_prices p ON p.gw2_id=b.gw2_id   GROUP BY b.price, b.gw2_id')
+    #test=c.fetchall()
+    #print test
+    c.execute('SELECT  i.gw2_name,b.gw2_id, SUM(b.quantity) AS sum_quantity, b.price, p.price FROM tp_bought b INNER JOIN items i ON b.gw2_id=i.gw2_id INNER JOIN tp_prices p ON p.gw2_id=b.gw2_id  WHERE p.price*0.85> b.price GROUP BY b.price, b.gw2_id')
+
+    list_of_items=c.fetchall()
+    print list_of_items
+    for item in list_of_items:
+        profit_percentage=(float(item[4]/item[3])-1)*100
+        print "Item {} can be sold with {}%  profit".format(item[0],profit_percentage)

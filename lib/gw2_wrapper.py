@@ -1,12 +1,17 @@
 import requests
+key =''
 
+def set_api_key(input_key):
+    global key
+    key=input_key
+    
 def get_jsonparsed_data(url):
     #Receive contect as url returned as object"
     response=requests.get(url)
     return response.json()
 
 def get_jsonpared_data_auth(url):
-    key="D37ED73D-3BA9-9D4B-B0CB-CB5F91E03E12B99BA2F6-843B-494E-B65A-03B35A5556F6"
+    #key="D37ED73D-3BA9-9D4B-B0CB-CB5F91E03E12B99BA2F6-843B-494E-B65A-03B35A5556F6"
     url=url+"?access_token="+key
     response=requests.get(url)
     return response.json()
@@ -33,5 +38,9 @@ def get_bought_items():
 def get_buying_items():
    t=get_jsonpared_data_auth("https://api.guildwars2.com/v2/commerce/transactions/current/buys")
    return t
+
+def get_price_item(gw2_id):
+    t=get_jsonparsed_data('https://api.guildwars2.com/v2/commerce/prices/'+str(gw2_id))
+    return t
 
 
